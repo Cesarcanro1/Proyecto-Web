@@ -42,6 +42,8 @@ public class SecurityConfig {
                 // reglas de acceso
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login").permitAll() // única pública
+                        .requestMatchers("/api/public/**").permitAll()   // 👈
+                        .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated() // todo lo demás requiere token
                 )
                 // cargador de usuarios (de tu BD)
