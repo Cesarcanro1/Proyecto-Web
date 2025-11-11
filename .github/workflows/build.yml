@@ -13,7 +13,6 @@ env:
   IMAGE: ghcr.io/cesarcanro1/proyecto-backend
   NAMESPACE: proyecto-web
   DEPLOYMENT: backend
-  REMOTE_PATH: ~/ProyectoWeb/backend
 
 jobs:
   build:
@@ -51,33 +50,15 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, proyecto-web]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Sube k8s.yaml a tu VM
-      - name: Upload k8s.yaml
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "k8s.yaml"
-          target: "${{ env.REMOTE_PATH }}/"
-
-      # Aplica manifests y hace rollout desde MicroK8s en tu VM
-      - name: Apply & Rollout on MicroK8s
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ env.REMOTE_PATH }}
-            microk8s kubectl apply -f k8s.yaml
-            microk8s kubectl -n ${{ env.NAMESPACE }} set image deploy/${{ env.DEPLOYMENT }} \
-              ${{ env.DEPLOYMENT }}=${{ env.IMAGE }}:latest
-            microk8s kubectl -n ${{ env.NAMESPACE }} rollout status deploy/${{ env.DEPLOYMENT }}
-            microk8s kubectl -n ${{ env.NAMESPACE }} get pods -l app=${{ env.DEPLOYMENT }} -o wide
+      - name: Apply manifests & rollout (local MicroK8s)
+        run: |
+          microk8s kubectl apply -f k8s.yaml
+          microk8s kubectl -n ${{ env.NAMESPACE }} set image deploy/${{ env.DEPLOYMENT }} \
+            ${{ env.DEPLOYMENT }}=${{ env.IMAGE }}:latest
+          microk8s kubectl -n ${{ env.NAMESPACE }} rollout status deploy/${{ env.DEPLOYMENT }}
+          microk8s kubectl -n ${{ env.NAMESPACE }} get pods -l app=${{ env.DEPLOYMENT }} -o wide
