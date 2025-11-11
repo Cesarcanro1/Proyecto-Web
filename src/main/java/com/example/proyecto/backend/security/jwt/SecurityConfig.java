@@ -2,6 +2,7 @@ package com.example.proyecto.backend.security.jwt;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -43,8 +44,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // reglas de acceso
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/error").permitAll()                 // ⬅️ nuevo (deja pasar forwards a /error)
                         .requestMatchers("/auth/login").permitAll() // única pública
-                        .requestMatchers("/api/public/**").permitAll()   // 👈
+                        .requestMatchers(HttpMethod.POST, "/api/public/signup").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated() // todo lo demás requiere token
                 )
