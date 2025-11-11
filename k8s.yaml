@@ -103,8 +103,6 @@ kind: Ingress
 metadata:
   name: backend
   namespace: proyecto-web
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: public
   rules:
