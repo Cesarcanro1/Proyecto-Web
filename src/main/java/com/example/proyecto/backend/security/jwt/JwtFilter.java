@@ -24,13 +24,12 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService uds;
 
-    // 👇 rutas públicas que NO requieren token
+    // ✅ rutas públicas que NO requieren token
     private static final Set<String> WHITE_LIST = Set.of(
             "/auth/login",
-            "/api/public",            // base
-            "/api/public/",           // con slash
-            "/api/public/signup"      // endpoint exacto
-            // agrega aquí /health, /ping si quieres
+            "/api/public",          // base
+            "/api/public/",         // con slash
+            "/api/public/signup"    // endpoint exacto
     );
 
     @Override
@@ -40,35 +39,38 @@ public class JwtFilter extends OncePerRequestFilter {
             @NonNull FilterChain chain
     ) throws ServletException, IOException {
 
-        // 0) Preflight CORS: siempre dejar pasar
+        // 0️⃣: Preflight CORS: siempre dejar pasar
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             chain.doFilter(request, response);
             return;
         }
 
-        // 1) Normaliza el path (quita contextPath si existe)
-        String uri = request.getRequestURI();                 // ej: /api/public/signup
-        String ctx = request.getContextPath();                // ej: /backend (si usas)
+        // 1️⃣: Normaliza path
+        String uri = request.getRequestURI(); // ej: /api/public/signup
+        String ctx = request.getContextPath();
         String path = (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx))
                 ? uri.substring(ctx.length())
                 : uri;
 
-        // 2) Si es ruta pública -> seguir sin tocar auth
+        // 2️⃣: Log temporal para debug
+        // System.out.println(">>> JWT Filter path: " + path);
+
+        // 3️⃣: Si es ruta pública -> seguir sin tocar auth
         if (isWhitelisted(path)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // 3) Si ya hay autenticación en el contexto -> seguir
+        // 4️⃣: Si ya hay auth -> seguir
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             chain.doFilter(request, response);
             return;
         }
 
-        // 4) Lee Authorization
+        // 5️⃣: Lee Authorization
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            // sin token -> dejar pasar y SecurityConfig decidirá (401/403 si corresponde)
+            // sin token -> no bloquees, deja que SecurityConfig decida
             chain.doFilter(request, response);
             return;
         }
@@ -87,7 +89,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception ignored) {
-            // no rompas el flujo: deja que SecurityConfig responda 401/403 si toca
+            // no rompas el flujo, deja que SecurityConfig responda 401/403
         }
 
         chain.doFilter(request, response);
@@ -95,6 +97,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private boolean isWhitelisted(String path) {
         if (path == null) return false;
+        // ✅ Permite exactos y cualquier subruta (como /api/public/signup)
         return WHITE_LIST.stream().anyMatch(w ->
                 path.equals(w) || path.startsWith(w + "/")
         );
