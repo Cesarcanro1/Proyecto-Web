@@ -32,7 +32,7 @@ public class SecurityConfig {
         return cfg.getAuthenticationManager();
     }
 
-    // 🚪 Saca totalmente estas rutas del chain (no pasan por filtros ni por auth)
+    // ⬅️ BYPASS TOTAL: nada de /api/public/** ni /error pasa por los filtros de Spring Security
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return web -> web.ignoring().requestMatchers(
@@ -48,8 +48,10 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/login").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
+                // ⬅️ por si algún forward/handler manda a /error
+                .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR,
+                                        jakarta.servlet.DispatcherType.FORWARD).permitAll()
+                .requestMatchers("/auth/login", "/api/auth/**").permitAll()
                 .anyRequest().authenticated()
             )
             .userDetailsService(uds)
