@@ -11,12 +11,11 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
-      # Checkout del código
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Login al GitHub Container Registry
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -24,11 +23,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build + Push del Dockerfile
       - name: Build and Push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .                # Dockerfile está en la raíz del backend
-          file: ./Dockerfile        # ruta del Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
-          tags: ghcr.io/cesarcanro1/proyecto-web:latest
+          tags: |
+            ghcr.io/cesarcanro1/proyecto-web:latest
+            ghcr.io/cesarcanro1/proyecto-web:sha-${{ github.sha }}
