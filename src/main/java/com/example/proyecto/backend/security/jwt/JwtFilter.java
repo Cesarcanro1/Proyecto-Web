@@ -39,6 +39,8 @@ public class JwtFilter extends OncePerRequestFilter {
             @NonNull FilterChain chain
     ) throws ServletException, IOException {
 
+        System.out.println(">>> JWT path = " + request.getRequestURI() + " method=" + request.getMethod());
+
         // 0️⃣: Preflight CORS: siempre dejar pasar
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             chain.doFilter(request, response);
@@ -97,7 +99,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private boolean isWhitelisted(String path) {
         if (path == null) return false;
-        // ✅ Permite exactos y cualquier subruta (como /api/public/signup)
+        // Permite exactos y cualquier subruta (como /api/public/signup)
         return WHITE_LIST.stream().anyMatch(w ->
                 path.equals(w) || path.startsWith(w + "/")
         );
