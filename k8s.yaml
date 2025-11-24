@@ -106,7 +106,7 @@ metadata:
 spec:
   ingressClassName: public
   rules:
-    - host: backend.${NODE_IP}.nip.io
+    - host: backend.10.43.103.143.nip.io
       http:
         paths:
           - path: /
