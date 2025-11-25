@@ -58,22 +58,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Renderiza el host del Ingress con el IP real de la VM
+      # Reemplaza backend.${NODE_IP}.nip.io en k8s.yaml con la IP real de la VM
       - name: Inject NODE_IP into k8s.yaml
         run: |
           NODE_IP=$(hostname -I | awk '{print $1}')
           echo "NODE_IP=${NODE_IP}"
-
           sed -i "s/backend.\${NODE_IP}.nip.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
 
       - name: Apply manifests & rollout (local MicroK8s)
         run: |
+          # Aplicar/actualizar manifiestos
           sudo microk8s kubectl apply -f k8s.yaml
 
-          sudo microk8s kubectl -n proyecto-web set image deploy/backend \
-            backend=ghcr.io/cesarcanro1/proyecto-backend:latest
+          # Actualizar la imagen del deployment
+          sudo microk8s kubectl -n ${NAMESPACE} set image deploy/${DEPLOYMENT} \
+            backend=${IMAGE}:latest
 
-          sudo microk8s kubectl -n proyecto-web rollout status deploy/backend
+          # Esperar a que el deployment termine el rollout
+          sudo microk8s kubectl -n ${NAMESPACE} rollout status deploy/${DEPLOYMENT}
 
-          sudo microk8s kubectl -n proyecto-web get ingress backend -o yaml | sed -n '1,120p'
-          sudo microk8s kubectl -n proyecto-web get pods -l app=backend -o wide
+          # Mostrar info útil para debug
+          sudo microk8s kubectl -n ${NAMESPACE} get ingress backend -o yaml | sed -n '1,120p'
+          sudo microk8s kubectl -n ${NAMESPACE} get pods -l app=backend -o wide
