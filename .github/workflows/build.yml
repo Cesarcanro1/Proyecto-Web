@@ -5,38 +5,73 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
-    name: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up job
-        uses: actions/checkout@v3
+    - name: Set up job
+      uses: actions/checkout@v3
 
-      - name: Build backend without tests
-        run: |
-          cd backend
-          mvn -DskipTests clean package
+    - name: Build appleboy/ssh-action@v1.0.3
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.K8S_HOST }}
+        username: ${{ secrets.K8S_USER }}
+        key: ${{ secrets.K8S_SSH_KEY }}
+        script_stop: false
+        script: |
+          echo "SSH OK (pre-check)"
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      - name: Build and push Docker image
-        run: |
-          docker build -t ghcr.io/cesarcanro1/proyecto-backend:latest ./backend
-          docker push ghcr.io/cesarcanro1/proyecto-backend:latest
+    # -----------------------------
+    # BUILD BACKEND
+    # -----------------------------
+    - name: Build backend without tests
+      run: |
+        ./mvnw -DskipTests package
 
-      - name: Deploy to K8s
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            sudo microk8s kubectl -n proyecto-web set image deployment/backend backend=ghcr.io/cesarcanro1/proyecto-backend:latest
-            sudo microk8s kubectl -n proyecto-web rollout restart deployment backend
+    # -----------------------------
+    # LOGIN GHCR
+    # -----------------------------
+    - name: Login to GHCR
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # -----------------------------
+    # BUILD + PUSH DOCKER IMAGE
+    # -----------------------------
+    - name: Build and push Docker image
+      run: |
+        docker build -t ghcr.io/cesarcanro1/proyecto-backend:latest .
+        docker push ghcr.io/cesarcanro1/proyecto-backend:latest
+
+    # -----------------------------
+    # DEPLOY TO MICROK8S
+    # -----------------------------
+    - name: Deploy to K8s
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.K8S_HOST }}
+        username: ${{ secrets.K8S_USER }}
+        key: ${{ secrets.K8S_SSH_KEY }}
+        script_stop: false
+        script: |
+          echo "Actualizando imagen en Kubernetes..."
+          sudo microk8s kubectl -n proyecto-web set image deployment/backend backend=ghcr.io/cesarcanro1/proyecto-backend:latest
+          sudo microk8s kubectl -n proyecto-web rollout restart deployment backend
+          sudo microk8s kubectl -n proyecto-web rollout status deployment backend --timeout=60s
+
+    # -----------------------------
+    # CLEANUP
+    # -----------------------------
+    - name: Complete job
+      run: |
+        echo "Deploy completado sin errores"
