@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  packages: write 
 
 env:
   IMAGE: ghcr.io/cesarcanro1/proyecto-backend
@@ -58,7 +58,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Reemplaza backend.${NODE_IP}.nip.io en k8s.yaml con la IP real de la VM
+      # Renderiza el host del Ingress con el IP real de la VM
       - name: Inject NODE_IP into k8s.yaml
         run: |
           NODE_IP=$(hostname -I | awk '{print $1}')
@@ -67,16 +67,39 @@ jobs:
 
       - name: Apply manifests & rollout (local MicroK8s)
         run: |
-          # Aplicar/actualizar manifiestos
-          sudo microk8s kubectl apply -f k8s.yaml
+          set -e
 
-          # Actualizar la imagen del deployment
+          echo ">>> Esperando a que microk8s esté ready..."
+          sudo microk8s status --wait-ready
+
+          echo ">>> Aplicando k8s.yaml (hasta 3 intentos si falla la conexión)..."
+          ATTEMPTS=0
+          MAX_ATTEMPTS=3
+          until [ $ATTEMPTS -ge $MAX_ATTEMPTS ]
+          do
+            if sudo microk8s kubectl apply -f k8s.yaml; then
+              echo "kubectl apply OK"
+              break
+            fi
+
+            ATTEMPTS=$((ATTEMPTS+1))
+            echo "kubectl apply falló (intento $ATTEMPTS/$MAX_ATTEMPTS), esperando 5s y reintentando..."
+            sleep 5
+          done
+
+          if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+            echo "kubectl apply siguió fallando después de $MAX_ATTEMPTS intentos :("
+            exit 1
+          fi
+
+          echo ">>> Actualizando imagen del deployment..."
           sudo microk8s kubectl -n ${NAMESPACE} set image deploy/${DEPLOYMENT} \
             backend=${IMAGE}:latest
 
-          # Esperar a que el deployment termine el rollout
+          echo ">>> Esperando a que termine el rollout..."
           sudo microk8s kubectl -n ${NAMESPACE} rollout status deploy/${DEPLOYMENT}
 
-          # Mostrar info útil para debug
-          sudo microk8s kubectl -n ${NAMESPACE} get ingress backend -o yaml | sed -n '1,120p'
-          sudo microk8s kubectl -n ${NAMESPACE} get pods -l app=backend -o wide
+          echo ">>> Info de debug:"
+          sudo microk8s kubectl -n ${NAMESPACE} get svc
+          sudo microk8s kubectl -n ${NAMESPACE} get ingress
+          sudo microk8s kubectl -n ${NAMESPACE} get pods -o wide
