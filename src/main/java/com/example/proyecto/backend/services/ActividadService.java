@@ -1,18 +1,20 @@
 package com.example.proyecto.backend.services;
 
+import java.util.List;
+import java.util.NoSuchElementException;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.example.proyecto.backend.dtos.ActividadDTO;
 import com.example.proyecto.backend.entity.Actividad;
 import com.example.proyecto.backend.entity.Proceso;
 import com.example.proyecto.backend.repository.ActividadRepository;
 import com.example.proyecto.backend.repository.ProcesoRepository;
 import com.example.proyecto.backend.security.jwt.SecurityUtils;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-import java.util.NoSuchElementException;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +28,7 @@ public class ActividadService {
     private ActividadDTO toDTO(Actividad a) {
         ActividadDTO dto = new ActividadDTO();
         dto.setId(a.getId());
-        dto.setProcesoId(a.getProceso().getId());
+        dto.setProcesoId(a.getProceso().getId()); 
         dto.setNombre(a.getNombre());
         dto.setTipo(a.getTipo());
         dto.setDescripcion(a.getDescripcion());
