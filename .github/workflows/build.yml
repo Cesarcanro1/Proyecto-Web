@@ -55,7 +55,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Renderiza el host del Ingress con el IP real de la VM
+      # Inserta el IP real del nodo en el host del Ingress
       - name: Inject NODE_IP into k8s.yaml
         run: |
           NODE_IP=$(hostname -I | awk '{print $1}')
@@ -64,9 +64,13 @@ jobs:
 
       - name: Apply manifests & rollout (local MicroK8s)
         run: |
-          microk8s kubectl apply -f k8s.yaml
-          microk8s kubectl -n proyecto-web set image deploy/backend \
+          sudo microk8s kubectl apply -f k8s.yaml
+          
+          sudo microk8s kubectl -n proyecto-web set image deploy/backend \
             backend=ghcr.io/cesarcanro1/proyecto-backend:latest
-          microk8s kubectl -n proyecto-web rollout status deploy/backend
-          microk8s kubectl -n proyecto-web get ingress backend -o yaml | sed -n '1,120p'
-          microk8s kubectl -n proyecto-web get pods -l app=backend -o wide
+          
+          sudo microk8s kubectl -n proyecto-web rollout status deploy/backend
+          
+          sudo microk8s kubectl -n proyecto-web get ingress backend -o yaml | sed -n '1,120p'
+          
+          sudo microk8s kubectl -n proyecto-web get pods -l app=backend -o wide
